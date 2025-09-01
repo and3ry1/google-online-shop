@@ -1,0 +1,82 @@
+all:
+  children:
+    kubernetes:
+      hosts:
+        k8s-master:
+          ansible_host: localhost
+          ansible_connection: local
+      vars:
+        ansible_python_interpreter: /usr/bin/python3
+        kubectl_config: ~/.kube/config
+    
+    microservices:
+      children:
+        frontend_services:
+          hosts:
+            frontend:
+              service_name: frontend
+              namespace: default
+              replicas: 1
+              port: 8080
+        
+        backend_services:
+          hosts:
+            cartservice:
+              service_name: cartservice
+              namespace: default
+              replicas: 1
+              port: 7070
+            
+            productcatalogservice:
+              service_name: productcatalogservice
+              namespace: default
+              replicas: 1
+              port: 3550
+            
+            currencyservice:
+              service_name: currencyservice
+              namespace: default
+              replicas: 1
+              port: 7000
+            
+            paymentservice:
+              service_name: paymentservice
+              namespace: default
+              replicas: 1
+              port: 50051
+            
+            shippingservice:
+              service_name: shippingservice
+              namespace: default
+              replicas: 1
+              port: 50051
+            
+            emailservice:
+              service_name: emailservice
+              namespace: default
+              replicas: 1
+              port: 8080
+            
+            checkoutservice:
+              service_name: checkoutservice
+              namespace: default
+              replicas: 1
+              port: 5050
+            
+            recommendationservice:
+              service_name: recommendationservice
+              namespace: default
+              replicas: 1
+              port: 8080
+            
+            adservice:
+              service_name: adservice
+              namespace: default
+              replicas: 1
+              port: 9555
+            
+            loadgenerator:
+              service_name: loadgenerator
+              namespace: default
+              replicas: 1
+              port: 8089

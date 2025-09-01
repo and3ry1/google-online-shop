@@ -1,0 +1,44 @@
+---
+- name: Deploy Online Boutique Microservices
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  
+  vars:
+    namespace: default
+    image_registry: "gcr.io/google-samples/microservices-demo"
+    version: "latest"
+    
+  tasks:
+    - name: Ensure namespace exists
+      kubernetes.core.k8s:
+        name: "{{ namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+      
+    - name: Deploy each microservice
+      include_tasks: tasks/deploy-microservice.yml
+      vars:
+        service_config: "{{ hostvars[item] }}"
+      loop: "{{ groups['microservices'] | default([]) }}"
+      when: groups['microservices'] is defined
+      
+    - name: Wait for all deployments to be ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        namespace: "{{ namespace }}"
+        label_selectors:
+          - "app={{ item }}"
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300
+      loop: "{{ groups['microservices'] | default([]) }}"
+      when: groups['microservices'] is defined
+      
+    - name: Display deployment status
+      debug:
+        msg: "All microservices have been deployed successfully!"

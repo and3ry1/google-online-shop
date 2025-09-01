@@ -1,0 +1,36 @@
+---
+- name: Rollback Single Microservice
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  
+  vars:
+    service_name: "{{ service_name | default('frontend') }}"
+    namespace: "{{ namespace | default('default') }}"
+    revision: "{{ revision | default('') }}"
+    
+  tasks:
+    - name: Get rollout history
+      shell: kubectl rollout history deployment/{{ service_name }} -n {{ namespace }}
+      register: rollout_history
+      
+    - name: Display rollout history
+      debug:
+        msg: "{{ rollout_history.stdout }}"
+        
+    - name: Rollback to previous version
+      shell: |
+        {% if revision %}
+        kubectl rollout undo deployment/{{ service_name }} --to-revision={{ revision }} -n {{ namespace }}
+        {% else %}
+        kubectl rollout undo deployment/{{ service_name }} -n {{ namespace }}
+        {% endif %}
+      register: rollback_result
+      
+    - name: Wait for rollback to complete
+      shell: kubectl rollout status deployment/{{ service_name }} -n {{ namespace }} --timeout=300s
+      register: rollback_status
+      
+    - name: Display rollback result
+      debug:
+        msg: "Rollback completed: {{ rollback_status.stdout }}"

@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ service_name }}
+  namespace: {{ namespace | default('default') }}
+  labels:
+    app: {{ service_name }}
+    version: {{ version | default('latest') }}
+spec:
+  replicas: {{ replicas | default(1) }}
+  selector:
+    matchLabels:
+      app: {{ service_name }}
+  template:
+    metadata:
+      labels:
+        app: {{ service_name }}
+        version: {{ version | default('latest') }}
+    spec:
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 5
+      containers:
+      - name: server
+        image: {{ image_registry | default('gcr.io/google-samples/microservices-demo') }}/{{ service_name }}:{{ version | default('latest') }}
+        ports:
+{% if port is defined %}
+        - containerPort: {{ port }}
+{% endif %}
+{% if additional_ports is defined %}
+{% for additional_port in additional_ports %}
+        - containerPort: {{ additional_port }}
+{% endfor %}
+{% endif %}
+        env:
+{% if env_vars is defined %}
+{% for env_var in env_vars %}
+        - name: {{ env_var.name }}
+          value: "{{ env_var.value }}"
+{% endfor %}
+{% endif %}
+        - name: PORT
+          value: "{{ port | default(8080) }}"
+        - name: DISABLE_TRACING
+          value: "1"
+        - name: DISABLE_PROFILER
+          value: "1"
+        resources:
+          requests:
+            cpu: {{ cpu_request | default('100m') }}
+            memory: {{ memory_request | default('64Mi') }}
+          limits:
+            cpu: {{ cpu_limit | default('200m') }}
+            memory: {{ memory_limit | default('128Mi') }}
+        readinessProbe:
+          periodSeconds: 5
+          httpGet:
+            path: {{ health_check_path | default('/') }}
+            port: {{ port | default(8080) }}
+        livenessProbe:
+          periodSeconds: 5
+          httpGet:
+            path: {{ health_check_path | default('/') }}
+            port: {{ port | default(8080) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ service_name }}
+  namespace: {{ namespace | default('default') }}
+  labels:
+    app: {{ service_name }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ service_name }}
+  ports:
+  - name: http
+    port: {{ port | default(8080) }}
+    targetPort: {{ port | default(8080) }}
+{% if additional_ports is defined %}
+{% for additional_port in additional_ports %}
+  - name: grpc-{{ additional_port }}
+    port: {{ additional_port }}
+    targetPort: {{ additional_port }}
+{% endfor %}
+{% endif %}

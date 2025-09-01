@@ -1,0 +1,152 @@
+---
+# Tâche pour déployer un microservice unique avec sa configuration spécifique
+# filepath: c:\Users\Administrateur\commun\tp final\infrastructure-automation\ansible\tasks\deploy-single-microservice.yml
+
+- name: "Deploy {{ service_config.service_name }}"
+  block:
+    - name: "Check dependencies for {{ service_config.service_name }}"
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: "{{ item }}"
+        namespace: "{{ service_config.namespace }}"
+      register: dependency_check
+      loop: "{{ service_config.dependencies | default([]) }}"
+      when: service_config.dependencies is defined and service_config.dependencies | length > 0
+    
+    - name: "Fail if dependencies are not ready for {{ service_config.service_name }}"
+      fail:
+        msg: "Dependency {{ item.item }} is not ready"
+      loop: "{{ dependency_check.results | default([]) }}"
+      when: 
+        - dependency_check.results is defined
+        - item.resources is defined
+        - item.resources | length == 0
+    
+    - name: "Create deployment for {{ service_config.service_name }}"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: "{{ service_config.service_name }}"
+            namespace: "{{ service_config.namespace }}"
+            labels:
+              app: "{{ service_config.service_name }}"
+              tier: "{{ group_names[0] if group_names else 'default' }}"
+              version: "{{ service_config.image_tag }}"
+          spec:
+            replicas: "{{ service_config.replicas }}"
+            strategy:
+              type: "{{ service_config.update_strategy }}"
+              rollingUpdate: "{{ {
+                'maxUnavailable': service_config.max_unavailable,
+                'maxSurge': service_config.max_surge
+              } if service_config.update_strategy == 'RollingUpdate' else omit }}"
+            selector:
+              matchLabels:
+                app: "{{ service_config.service_name }}"
+            template:
+              metadata:
+                labels:
+                  app: "{{ service_config.service_name }}"
+                  tier: "{{ group_names[0] if group_names else 'default' }}"
+                  version: "{{ service_config.image_tag }}"
+              spec:
+                serviceAccountName: default
+                terminationGracePeriodSeconds: 5
+                containers:
+                - name: server
+                  image: "{{ service_config.image_registry | default(image_registry) }}/{{ service_config.service_name }}:{{ service_config.image_tag }}"
+                  ports:
+                  - containerPort: "{{ service_config.port }}"
+                  env:
+                  - name: PORT
+                    value: "{{ service_config.port }}"
+                  resources:
+                    requests:
+                      cpu: "{{ resource_limits.standard.requests.cpu if group_names[0] in ['support_services', 'optional_services'] else resource_limits.critical.requests.cpu }}"
+                      memory: "{{ resource_limits.standard.requests.memory if group_names[0] in ['support_services', 'optional_services'] else resource_limits.critical.requests.memory }}"
+                    limits:
+                      cpu: "{{ resource_limits.standard.limits.cpu if group_names[0] in ['support_services', 'optional_services'] else resource_limits.critical.limits.cpu }}"
+                      memory: "{{ resource_limits.standard.limits.memory if group_names[0] in ['support_services', 'optional_services'] else resource_limits.critical.limits.memory }}"
+                  livenessProbe: "{{
+                    {
+                      'httpGet': {
+                        'path': service_config.health_check_path,
+                        'port': service_config.port
+                      },
+                      'initialDelaySeconds': health_check_config.initial_delay_seconds,
+                      'periodSeconds': health_check_config.period_seconds,
+                      'timeoutSeconds': health_check_config.timeout_seconds,
+                      'failureThreshold': health_check_config.failure_threshold
+                    } if service_config.health_check_path else omit
+                  }}"
+                  readinessProbe: "{{
+                    {
+                      'httpGet': {
+                        'path': service_config.health_check_path,
+                        'port': service_config.port
+                      },
+                      'initialDelaySeconds': 5,
+                      'periodSeconds': 5,
+                      'timeoutSeconds': 3,
+                      'failureThreshold': 2
+                    } if service_config.health_check_path else omit
+                  }}"
+    
+    - name: "Create service for {{ service_config.service_name }}"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: "{{ service_config.service_name }}"
+            namespace: "{{ service_config.namespace }}"
+            labels:
+              app: "{{ service_config.service_name }}"
+          spec:
+            type: ClusterIP
+            ports:
+            - port: "{{ service_config.port }}"
+              targetPort: "{{ service_config.port }}"
+              protocol: TCP
+            selector:
+              app: "{{ service_config.service_name }}"
+    
+    - name: "Wait for {{ service_config.service_name }} to be ready"
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: "{{ service_config.service_name }}"
+        namespace: "{{ service_config.namespace }}"
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300
+      register: deployment_status
+    
+    - name: "Display {{ service_config.service_name }} deployment result"
+      debug:
+        msg: "{{ service_config.service_name }} deployed successfully with {{ deployment_status.resources[0].status.readyReplicas }}/{{ deployment_status.resources[0].spec.replicas }} replicas"
+
+  rescue:
+    - name: "Handle deployment failure for {{ service_config.service_name }}"
+      debug:
+        msg: "Failed to deploy {{ service_config.service_name }}"
+    
+    - name: "Get deployment events for {{ service_config.service_name }}"
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Event
+        namespace: "{{ service_config.namespace }}"
+        field_selectors:
+          - involvedObject.name={{ service_config.service_name }}
+      register: deployment_events
+    
+    - name: "Display deployment events"
+      debug:
+        var: deployment_events.resources

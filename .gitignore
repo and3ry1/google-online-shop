@@ -1,0 +1,55 @@
+# Build artifacts
+*.log
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.tfplan
+
+# Ansible
+*.retry
+.ansible/
+ansible.log
+
+# PowerShell
+*.ps1xml
+
+# Kubernetes
+.kube/config
+kubeconfig*
+
+# Secrets
+secrets/
+*.key
+*.pem
+*.crt
+config.json
+
+# Local development
+.env
+.env.local
+local-config/
+test-data/
+
+# CI/CD
+.github/secrets/
+
+# Documentation builds
+docs/_build/
+docs/.doctrees/

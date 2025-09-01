@@ -1,0 +1,215 @@
+# Inventaire Ansible restructuré pour déploiements séparés
+# filepath: c:\Users\Administrateur\commun\tp final\infrastructure-automation\ansible\inventory-separated.yml
+
+all:
+  children:
+    kubernetes:
+      hosts:
+        k8s-master:
+          ansible_host: localhost
+          ansible_connection: local
+      vars:
+        ansible_python_interpreter: /usr/bin/python3
+        kubectl_config: ~/.kube/config
+    
+    # SERVICES CRITIQUES - Haute disponibilité requise
+    critical_services:
+      children:
+        web_tier:
+          hosts:
+            frontend:
+              service_name: frontend
+              namespace: default
+              replicas: 3
+              port: 8080
+              image_tag: v0.10.0
+              update_strategy: RollingUpdate
+              max_unavailable: "25%"
+              max_surge: "25%"
+              health_check_path: "/_healthz"
+              dependencies: []
+              
+        business_tier:
+          hosts:
+            cartservice:
+              service_name: cartservice
+              namespace: default
+              replicas: 3
+              port: 7070
+              image_tag: v0.10.0
+              update_strategy: RollingUpdate
+              max_unavailable: "33%"
+              max_surge: "33%"
+              health_check_path: "/health"
+              dependencies: ["redis-cart"]
+              
+            checkoutservice:
+              service_name: checkoutservice
+              namespace: default
+              replicas: 3
+              port: 5050
+              image_tag: v0.10.0
+              update_strategy: RollingUpdate
+              max_unavailable: "33%"
+              max_surge: "33%"
+              health_check_path: "/health"
+              dependencies: ["cartservice", "currencyservice", "emailservice", "paymentservice", "shippingservice"]
+              
+            paymentservice:
+              service_name: paymentservice
+              namespace: default
+              replicas: 3
+              port: 50051
+              image_tag: v0.10.0
+              update_strategy: RollingUpdate
+              max_unavailable: "33%"
+              max_surge: "33%"
+              health_check_path: "/health"
+              dependencies: []
+              
+            productcatalogservice:
+              service_name: productcatalogservice
+              namespace: default
+              replicas: 3
+              port: 3550
+              image_tag: v0.10.0
+              update_strategy: RollingUpdate
+              max_unavailable: "33%"
+              max_surge: "33%"
+              health_check_path: "/health"
+              dependencies: []
+        
+        data_tier:
+          hosts:
+            redis-cart:
+              service_name: redis-cart
+              namespace: default
+              replicas: 1
+              port: 6379
+              image_tag: alpine
+              image_registry: redis
+              update_strategy: Recreate
+              max_unavailable: "0"
+              max_surge: "0"
+              health_check_path: ""
+              dependencies: []
+    
+    # SERVICES STANDARDS - Disponibilité normale
+    standard_services:
+      children:
+        support_services:
+          hosts:
+            currencyservice:
+              service_name: currencyservice
+              namespace: default
+              replicas: 2
+              port: 7000
+              image_tag: v0.10.0
+              update_strategy: RollingUpdate
+              max_unavailable: "50%"
+              max_surge: "50%"
+              health_check_path: "/health"
+              dependencies: []
+              
+            emailservice:
+              service_name: emailservice
+              namespace: default
+              replicas: 2
+              port: 5000
+              image_tag: v0.10.0
+              update_strategy: RollingUpdate
+              max_unavailable: "50%"
+              max_surge: "50%"
+              health_check_path: "/health"
+              dependencies: []
+              
+            shippingservice:
+              service_name: shippingservice
+              namespace: default
+              replicas: 2
+              port: 50051
+              image_tag: v0.10.0
+              update_strategy: RollingUpdate
+              max_unavailable: "50%"
+              max_surge: "50%"
+              health_check_path: "/health"
+              dependencies: []
+        
+        optional_services:
+          hosts:
+            adservice:
+              service_name: adservice
+              namespace: default
+              replicas: 2
+              port: 9555
+              image_tag: v0.10.0
+              update_strategy: RollingUpdate
+              max_unavailable: "50%"
+              max_surge: "50%"
+              health_check_path: "/health"
+              dependencies: []
+              
+            recommendationservice:
+              service_name: recommendationservice
+              namespace: default
+              replicas: 2
+              port: 8080
+              image_tag: v0.10.0
+              update_strategy: RollingUpdate
+              max_unavailable: "50%"
+              max_surge: "50%"
+              health_check_path: "/health"
+              dependencies: ["productcatalogservice"]
+    
+    # SERVICES DE TEST/DÉVELOPPEMENT
+    dev_services:
+      hosts:
+        loadgenerator:
+          service_name: loadgenerator
+          namespace: default
+          replicas: 1
+          port: 8089
+          image_tag: v0.10.0
+          update_strategy: Recreate
+          max_unavailable: "100%"
+          max_surge: "0%"
+          health_check_path: ""
+          dependencies: ["frontend"]
+
+# Variables globales pour tous les services
+  vars:
+    image_registry: "gcr.io/google-samples/microservices-demo"
+    namespace: default
+    pull_policy: IfNotPresent
+    
+    # Configuration des stratégies de déploiement
+    deployment_strategies:
+      RollingUpdate:
+        type: RollingUpdate
+      Recreate:
+        type: Recreate
+    
+    # Configuration des health checks
+    health_check_config:
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      failure_threshold: 3
+      success_threshold: 1
+    
+    # Configuration des ressources
+    resource_limits:
+      critical:
+        requests:
+          memory: "64Mi"
+          cpu: "100m"
+        limits:
+          memory: "128Mi"
+          cpu: "200m"
+      standard:
+        requests:
+          memory: "32Mi"
+          cpu: "50m"
+        limits:
+          memory: "64Mi"
+          cpu: "100m"
