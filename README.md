@@ -25,6 +25,13 @@ Automatisation complète du déploiement des microservices Online Boutique avec 
 - Port-forward automatique
 - Configuration réseau complète
 
+### 🎯 Scripts de Production (5)
+- `Deploy-Microservices.ps1` - Déploiement principal
+- `Separate-Services-Manager.ps1` - Gestion séparée (recommandé)
+- `WebAccess-Manager.ps1` - Gestion accès web
+- `Monitor-Health.ps1` - Surveillance continue
+- `Improve-Resilience.ps1` - Résilience et scaling
+
 ## 🚀 Quick Start
 
 ### Prérequis
@@ -59,7 +66,7 @@ infrastructure-automation/
 ├── 🔧 ansible/             # Déploiement automatisé
 │   ├── playbooks/          # Playbooks Ansible
 │   ├── templates/          # Templates Kubernetes
-│   └── *.ps1              # Scripts PowerShell
+│   └── *.ps1 (5 scripts)  # Scripts PowerShell production
 ├── 🌐 .github/workflows/   # CI/CD GitHub Actions
 └── 📚 docs/               # Documentation
 ```
