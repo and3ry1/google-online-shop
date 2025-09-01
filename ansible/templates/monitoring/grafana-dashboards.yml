@@ -1,0 +1,278 @@
+---
+# Dashboards Grafana préconfigurés pour microservices
+# Import automatique via ConfigMap
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  microservices-overview.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "🏪 Microservices Online Boutique - Vue d'ensemble",
+        "tags": ["microservices", "online-boutique"],
+        "timezone": "browser",
+        "refresh": "30s",
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "panels": [
+          {
+            "id": 1,
+            "title": "Services Disponibles",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(up{job=\"microservices\"})"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "thresholds"},
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": 0},
+                    {"color": "yellow", "value": 8},
+                    {"color": "green", "value": 11}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 2,
+            "title": "Taux de Requêtes (req/s)",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total[5m]))"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Latence 95e Percentile",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+            "fieldConfig": {
+              "defaults": {
+                "unit": "s",
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": 0},
+                    {"color": "yellow", "value": 0.5},
+                    {"color": "red", "value": 1.0}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 4,
+            "title": "Taux d'Erreur (%)",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "(sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))) * 100"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": 0},
+                    {"color": "yellow", "value": 2},
+                    {"color": "red", "value": 5}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 5,
+            "title": "CPU Usage par Service",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "sum(rate(container_cpu_usage_seconds_total{pod=~\".*\"}[5m])) by (pod) * 100"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent"
+              }
+            }
+          },
+          {
+            "id": 6,
+            "title": "Memory Usage par Service",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "sum(container_memory_usage_bytes{pod=~\".*\"}) by (pod) / 1024 / 1024"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+            "fieldConfig": {
+              "defaults": {
+                "unit": "decbytes"
+              }
+            }
+          },
+          {
+            "id": 7,
+            "title": "Requêtes par Service",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total[5m])) by (kubernetes_name)"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12}
+          },
+          {
+            "id": 8,
+            "title": "Status des Pods",
+            "type": "table",
+            "targets": [
+              {
+                "expr": "kube_pod_status_phase",
+                "format": "table"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20}
+          }
+        ]
+      }
+    }
+  
+  kubernetes-cluster.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "☸️ Kubernetes Cluster Monitoring",
+        "tags": ["kubernetes", "cluster"],
+        "timezone": "browser",
+        "refresh": "30s",
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "panels": [
+          {
+            "id": 1,
+            "title": "Cluster Nodes",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(kube_node_info)"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Total Pods",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(kube_pod_info)"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Running Pods",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(kube_pod_status_phase{phase=\"Running\"})"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0}
+          },
+          {
+            "id": 4,
+            "title": "Failed Pods",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(kube_pod_status_phase{phase=\"Failed\"})"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "thresholds"},
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": 0},
+                    {"color": "red", "value": 1}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 5,
+            "title": "Node CPU Usage",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "100 - (avg(irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}
+          },
+          {
+            "id": 6,
+            "title": "Node Memory Usage",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}
+          }
+        ]
+      }
+    }
+
+---
+# Provisioning des dashboards
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-providers
+  namespace: monitoring
+data:
+  dashboards.yml: |
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      updateIntervalSeconds: 10
+      allowUiUpdates: true
+      options:
+        path: /var/lib/grafana/dashboards

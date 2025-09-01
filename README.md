@@ -26,11 +26,16 @@ Automatisation complète du déploiement des microservices Online Boutique avec 
 - Configuration réseau complète
 
 ### 🎯 Scripts de Production (5)
-- `Deploy-Microservices.ps1` - Déploiement principal
-- `Separate-Services-Manager.ps1` - Gestion séparée (recommandé)
-- `WebAccess-Manager.ps1` - Gestion accès web
-- `Monitor-Health.ps1` - Surveillance continue
-- `Improve-Resilience.ps1` - Résilience et scaling
+- **Deploy-Microservices.ps1** - Déploiement principal des 11 microservices
+- **Separate-Services-Manager.ps1** - Gestion séparée et mises à jour par service
+- **WebAccess-Manager.ps1** - Gestion automatique de l'accès web
+- **Monitor-Health.ps1** - Surveillance continue et auto-healing
+- **Improve-Resilience.ps1** - Amélioration de la résilience et scaling
+
+### 📊 Monitoring Infrastructure (Séparé)
+- **Dossier dédié** : `../monitoring-infrastructure/`
+- **Stack complète** : Prometheus + Grafana + Jaeger + AlertManager
+- **Isolation** : Environment complètement séparé pour la sécurité
 
 ## 🚀 Quick Start
 
@@ -58,17 +63,39 @@ cd ../ansible
 .\WebAccess-Manager.ps1 -Action setup
 ```
 
+### 📊 **Phase 3: Monitoring (🆕 ISOLÉ)**
+```powershell
+cd ../monitoring-infrastructure/ansible/
+.\Deploy-Monitoring-Stack.ps1 -Action deploy-all
+
+# Accès aux interfaces (environment séparé)
+# Grafana: http://localhost:30030 (admin/admin123)
+# Prometheus: http://localhost:30090
+# Jaeger: http://localhost:30686
+# AlertManager: http://localhost:30093
+```
+
 ## 📊 Architecture
 
 ```
-infrastructure-automation/
-├── 🔷 terraform/           # Infrastructure as Code
-├── 🔧 ansible/             # Déploiement automatisé
-│   ├── playbooks/          # Playbooks Ansible
-│   ├── templates/          # Templates Kubernetes
-│   └── *.ps1 (5 scripts)  # Scripts PowerShell production
-├── 🌐 .github/workflows/   # CI/CD GitHub Actions
-└── 📚 docs/               # Documentation
+tp-final/
+├── 🏭 infrastructure-automation-clean/  # Environment PRODUCTION
+│   ├── 🔷 terraform/                   # Infrastructure as Code
+│   ├── 🔧 ansible/                     # Déploiement microservices
+│   │   ├── playbooks/                  # Playbooks Ansible
+│   │   ├── templates/                  # Templates Kubernetes
+│   │   └── *.ps1 (5 scripts)          # Scripts PowerShell production
+│   ├── 🌐 .github/workflows/           # CI/CD GitHub Actions
+│   └── 📚 docs/                       # Documentation
+├── 📊 monitoring-infrastructure/        # Environment MONITORING (Isolé)
+│   ├── 🔧 ansible/                     # Stack monitoring séparée
+│   │   ├── playbooks/                  # Déploiement Prometheus/Grafana
+│   │   ├── tasks/                      # Tâches de monitoring
+│   │   └── Deploy-Monitoring-Stack.ps1 # Script principal monitoring
+│   ├── 📊 dashboards/                  # Dashboards Grafana
+│   ├── 🚨 alerts/                      # Règles d'alerte
+│   └── 📚 docs/                       # Documentation monitoring
+└── 🎯 microservices-demo/              # Source code (référence)
 ```
 
 ## 🎯 Commandes Principales
